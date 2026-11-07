@@ -1,0 +1,41 @@
+# Puts the game's website on GitHub Pages:
+# https://hbuhrmanlll.github.io/follow-me-releases/  (3D version: /3d/)
+# The private repo follow-me-game builds the site, uploads it here as
+# site.tar.gz on the "website" release, and then starts this workflow.
+# (Pages is used this way because one game file is over 100 MB, which is too
+# big to keep in a normal branch.)
+# One-time setup: Settings → Pages → Source: "GitHub Actions".
+name: Publish website
+
+on:
+  repository_dispatch:
+    types: [site]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Download the site
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download website --repo "${{ github.repository }}" --pattern site.tar.gz
+          mkdir site && tar -xzf site.tar.gz -C site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4
